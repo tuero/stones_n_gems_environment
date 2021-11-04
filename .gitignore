@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Data
+data/*.pkl
+data/*.npy
+data/**/*.npz
+
+export/optimality/*.npz
+
+# Checkpoint models
+checkpoints/
+
+# Logs
+*.log
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Experiment tensorboard
+*.tfevents*
