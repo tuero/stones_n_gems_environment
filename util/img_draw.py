@@ -1,6 +1,9 @@
+import os
+import sys
 import numpy as np
 import cv2
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import rnd_tile_images_visible
 
 

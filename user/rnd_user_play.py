@@ -1,9 +1,13 @@
 """
 Play a map with user control (keyboard input.)
 """
+import os
+import sys
 import numpy as np
 
 from ptu.util.render import Render
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from base_rnd import RNDBaseEnv
 
 

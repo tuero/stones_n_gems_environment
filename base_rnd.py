@@ -2,12 +2,14 @@ from ptu.rl.base_environment import BaseEnvironment
 
 import random
 import os
+import sys
 import numpy as np
 import torch
 import cv2
 import logging
 from open_spiel.python import rl_environment
 
+sys.path.append(os.path.dirname(__file__))
 from util.rnd_definitions import tilestr_to_visiblecellid, hiddencell_to_mapstr
 from util.img_draw import rnd_state_to_img
 
