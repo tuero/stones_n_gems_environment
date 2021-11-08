@@ -9,6 +9,10 @@ from ptu.util.render import Render
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from base_rnd import RNDBaseEnv
+from rnd_simple_exit import RNDSimpleExit
+from rnd_single_diamond import RNDSingleDiamond
+from rnd_single_room import RNDSingleRoom
+from rnd_double_room import RNDDoubleRoom
 
 
 class _Getch:
@@ -88,11 +92,29 @@ def play(env: RNDBaseEnv):
 
 
 if __name__ == "__main__":
-    print("Paste map string: ")
-    sentinel=''
-    input_map = '\n'.join(iter(input, sentinel))
-    map_id = np.array([list(map(int, s1.split(","))) for s1 in input_map.split("\n")], dtype=np.uint8)
+    print("Enter game mode: ")
+    print("0: Custom map string")
+    print("1: Simple Exit Open")
+    print("2: Single Diamond")
+    print("3: Single Room with Diamond")
+    print("4: Double Room with Diamond")
+    choice = input()
 
-    map_details = {"map_id": map_id}
-    env = RNDBaseEnv(map_details=map_details, use_noop=True)
+    if choice == 0:
+        print("Paste map string: ")
+        sentinel=''
+        input_map = '\n'.join(iter(input, sentinel))
+        map_id = np.array([list(map(int, s1.split(","))) for s1 in input_map.split("\n")], dtype=np.uint8)
+        map_details = {"map_id": map_id}
+        env = RNDBaseEnv(map_details=map_details, use_noop=True)
+    elif choice == "1":
+        env = RNDSimpleExit(use_noop=True, env_mode=2)
+    elif choice == "2":
+        env = RNDSingleDiamond(use_noop=True, env_mode=2)
+    elif choice == "3":
+        env = RNDSingleRoom(use_noop=True, env_mode=2)
+    elif choice == "4":
+        env = RNDDoubleRoom(use_noop=True, env_mode=2)
+    else:
+        raise ValueError
     play(env)

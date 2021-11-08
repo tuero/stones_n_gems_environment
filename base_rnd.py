@@ -25,7 +25,7 @@ class RNDBaseEnv(BaseEnvironment):
         base_dir: str = None,
         max_steps: int = 1000,
         use_noop: bool = False,
-        env_mode: int = 1,
+        env_mode: int = 2,
         render_width: int = -1,
         render_height: int = -1,
         tensor_width: int = 320,
@@ -46,7 +46,6 @@ class RNDBaseEnv(BaseEnvironment):
             tensor_height: Height of the tensor representation of state image
         """
         super().__init__()
-        assert map_details is not None or (base_dir is not None and os.path.exists(base_dir))
 
         # Get args passed in
         self._max_steps = max_steps
@@ -66,10 +65,13 @@ class RNDBaseEnv(BaseEnvironment):
         self._step = 0
         self._cumulative_reward = 0
 
-    def _timestep_to_state(self, time_step):
+    def _timestep_to_state(self, time_step, show_ids: bool = False):
         # openspiel internal representation of state are info_states at time_steps.
         base_obs_shape = self._env.game.observation_tensor_shape()
-        return np.array(time_step.observations["info_state"][0], dtype="uint8").reshape(base_obs_shape)
+        state = np.array(time_step.observations["info_state"][0], dtype="uint16").reshape(base_obs_shape)
+        if not show_ids:
+            state = np.array(state > 0, dtype="uint16")
+        return state
 
     def _get_random_map(self):
         # Choose a random map file from the saved base directory
@@ -91,7 +93,7 @@ class RNDBaseEnv(BaseEnvironment):
 
         # Convert stored map array into input string representation
         map_str = hiddencell_to_mapstr(self.map_details["map_id"], self._max_steps)
-        env_configs = {"grid": map_str, "obs_show_ids": False, "reward_structure": self._env_mode}
+        env_configs = {"grid": map_str, "obs_show_ids": True, "reward_structure": self._env_mode}
         self._env = rl_environment.Environment("stones_and_gems", **env_configs)
 
         # Return logging to previous state
@@ -136,6 +138,9 @@ class RNDBaseEnv(BaseEnvironment):
 
     def get_current_state(self):
         return self._timestep_to_state(self._env.get_time_step())
+
+    def get_current_state_ids(self):
+        return self._timestep_to_state(self._env.get_time_step(), True)
 
     def state_to_image(self, state=None):
         # (h, w, c)

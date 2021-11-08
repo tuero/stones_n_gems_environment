@@ -14,6 +14,24 @@ ActionOffsets = {
 }
 
 
+# Property bit flags
+# const enum RewardCodes {
+#   kRewardAgentDies = 0,
+#   kRewardCollectDiamond = 1,
+#   kRewardWalkThroughExit = 2,
+#   kRewardNutToDiamond = 3,
+#   kRewardCollectKey = 4,
+#   kRewardWalkThroughGate = 5
+# };
+class RewardCodes(IntEnum):
+    kRewardAgentDies        = (1 << 0)
+    kRewardCollectDiamond   = (1 << 1)
+    kRewardWalkThroughExit  = (1 << 2)
+    kRewardNutToDiamond     = (1 << 3)
+    kRewardCollectKey       = (1 << 4)
+    kRewardWalkThroughGate  = (1 << 5)
+
+
 # Hidden celltypes for the OpenSpiel stones_and_gems environment.
 class HiddenCellType(IntEnum):
     kAgent              = 0
@@ -223,6 +241,9 @@ rnd_doorsopen_visible = [tilestr_to_visiblecellid[name] for name in [
 rnd_keys_visible = [tilestr_to_visiblecellid[name] for name in [
     "key_red", "key_yellow", "key_green", "key_blue"
 ]]
+rnd_background_tiles_visible = [tilestr_to_visiblecellid[name] for name in [
+    "empty", "dirt"
+]]
 rnd_static_tiles_visible = [tilestr_to_visiblecellid[name] for name in [
     "empty", "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt"
 ]]
@@ -236,25 +257,13 @@ rnd_doorsopen_hidden = [tilestr_to_hiddencellid[name] for name in [
 rnd_keys_hidden = [tilestr_to_hiddencellid[name] for name in [
     "key_red", "key_yellow", "key_green", "key_blue"
 ]]
+rnd_background_tiles_hidden = [tilestr_to_hiddencellid[name] for name in [
+    "empty", "dirt"
+]]
 rnd_static_tiles_hidden = [tilestr_to_hiddencellid[name] for name in [
     "empty", "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt"
 ]]
 
-# Tile sets for pathfinding
-rnd_pathfinding_tiles_hidden = [tilestr_to_hiddencellid[name] for name in [
-    "empty", "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt", "agent", "wall_brick", "exit_open"
-]]
-rnd_pathfinding_tiles_visible = [tilestr_to_visiblecellid[name] for name in [
-    "empty", "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt", "agent", "wall_brick", "exit_open"
-]]
-rnd_pathfinding_tiles_hidden.sort()
-rnd_pathfinding_tiles_visible.sort()
-rnd_vin_tiles_hidden = [tilestr_to_hiddencellid[name] for name in [
-    "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt", "wall_brick", "exit_open"
-]]
-rnd_vin_tiles_visible = [tilestr_to_visiblecellid[name] for name in [
-    "dirt", "pebble_in_dirt", "stone_in_dirt", "void_in_dirt", "wall_brick", "exit_open"
-]]
 
 
 # Images for the tiles
@@ -373,18 +382,19 @@ hlp_ids = {
 }
 
 
-def hiddencell_to_mapstr(map_ids: np.ndarray, max_steps: int):
+def hiddencell_to_mapstr(map_ids: np.ndarray, max_steps: int, num_diamonds: int = 0):
     """Convert an array of HiddenCellTypes to string representation for OpenSpiel environment.
 
     Args:
         map_ids: np.array of HiddenCellTypes
         max_steps: Maximum number of steps for the environment before stopping
+        num_diamonds: Number of diamonds required to open the door
 
     Returns:
         string representing map in OpenSpiel format
     """
     rows, cols = map_ids.shape
-    map_str = "{},{},{},0\n".format(rows, cols, max_steps)
+    map_str = "{},{},{},{}\n".format(rows, cols, max_steps, num_diamonds)
     for r in range(rows):
         for c in range(cols):
             map_str += "{},".format(map_ids[r, c])
