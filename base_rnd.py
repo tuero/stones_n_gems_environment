@@ -113,7 +113,7 @@ class RNDBaseEnv(BaseEnvironment):
         return self._env.game.observation_tensor_shape()
 
     def reset(self):
-        self._reset()
+        return self._reset()
 
     def step(self, action):
         assert action >= 0 and action < self._num_actions
