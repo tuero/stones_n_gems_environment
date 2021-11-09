@@ -10,15 +10,24 @@ from util.rnd_definitions import rnd_background_tiles_hidden
 from typing import Tuple
 
 
-def fill_room(room: np.ndarray, fill_tiles: Tuple[HiddenCellType]):
+def _random_choice(items: Tuple, gen: np.random.RandomState = None):
+    return random.choice(items) if gen is None else gen.choice(items)
+
+
+def _random_shuffle(items: Tuple, gen: np.random.RandomState = None):
+    random.shuffle(items) if gen is None else gen.shuffle(items)
+
+
+def fill_room(room: np.ndarray, fill_tiles: Tuple[HiddenCellType], gen: np.random.RandomState = None):
     """Fill a room with a given tile.
     Args:
         room: The room numpy array
+        gen: Generator for RNG
     """
     rows, cols = room.shape[0], room.shape[1]
     for r in range(1, rows - 1):
         for c in range(1, cols - 1):
-            room[r, c] = random.choice(fill_tiles)
+            room[r, c] = _random_choice(fill_tiles, gen)
 
 
 def add_item_inside_room(
@@ -26,6 +35,7 @@ def add_item_inside_room(
     tile_id: HiddenCellType,
     blocked_tiles: Tuple[Tuple[int, int]] = [],
     background_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden,
+    gen: np.random.RandomState = None,
 ):
     """Add an item in the interior of a room.
     Args:
@@ -33,6 +43,7 @@ def add_item_inside_room(
         tile_id: HiddenCellType of the tile to add
         blocked_tiles: Indices to not add to
         background_tiles: Tiles which are considered background, and can be written over
+        gen: Generator for RNG
     """
     rows, cols = room.shape[0], room.shape[1]
     room_indices = [
@@ -42,11 +53,11 @@ def add_item_inside_room(
         if room[r, c] in background_tiles and (r, c) not in blocked_tiles
     ]
     assert len(room_indices) > 0
-    room_idx = random.choice(room_indices)
+    room_idx = _random_choice(room_indices, gen)
     room[room_idx[0], room_idx[1]] = tile_id
 
 
-def add_item_border_room(room: np.ndarray, tile_id: HiddenCellType, room_position):
+def add_item_border_room(room: np.ndarray, tile_id: HiddenCellType, room_position, gen: np.random.RandomState = None):
     rows, cols = room.shape[0], room.shape[1]
     room_indices = []
     room_indices += [(r, 0) for r in range(1, rows - 1)]
@@ -54,16 +65,17 @@ def add_item_border_room(room: np.ndarray, tile_id: HiddenCellType, room_positio
     room_indices += [(0, c) for c in range(1, cols - 1)]
     room_indices += [(rows - 1, c) for c in range(1, cols - 1)]
     assert len(room_indices) > 0
-    room_idx = random.choice(room_indices)
+    room_idx = _random_choice(room_indices, gen)
     room[room_idx[0], room_idx[1]] = tile_id
 
 
-def add_item_border_corner(room: np.ndarray, tile_id: HiddenCellType, room_position: str):
+def add_item_border_corner(room: np.ndarray, tile_id: HiddenCellType, room_position: str, gen: np.random.RandomState = None):
     """Add an item along the border of a room that's placed in the corner of the map.
     Args:
         room: The room to insert into
         tile_id: HiddenCellType of the tile to add
         room_position: Position of the map the room is placed in
+        gen: Generator for RNG
     """
     rows, cols = room.shape[0], room.shape[1]
     if room_position == "TOP_LEFT":
@@ -75,7 +87,7 @@ def add_item_border_corner(room: np.ndarray, tile_id: HiddenCellType, room_posit
     elif room_position == "BOTTOM_RIGHT":
         idxs = [(0, c) for c in range(1, cols - 1)] + [(r, 0) for r in range(1, rows - 1)]
 
-    idx = random.choice(idxs)
+    idx = _random_choice(idxs, gen)
     room[idx[0], idx[1]] = tile_id
 
 
@@ -83,8 +95,9 @@ def add_room_to_map(m: np.ndarray, room: np.ndarray, room_offset: Tuple[int, int
     """Add the room to the map
     Args:
         m: The underlying map
-        room: The room to insert 
+        room: The room to insert
         room_offset: Starting index of the room (top left index)
+        gen: Generator for RNG
     """
     start_r, start_c = room_offset
     rows, cols = room.shape[0], room.shape[1]
@@ -93,17 +106,18 @@ def add_room_to_map(m: np.ndarray, room: np.ndarray, room_offset: Tuple[int, int
             m[r + start_r, c + start_c] = room[r, c]
 
 
-def get_room_positions_corner(num_rooms: int) -> Tuple[str]:
+def get_room_positions_corner(num_rooms: int, gen: np.random.RandomState = None) -> Tuple[str]:
     """Get room offsets for the rooms
     Args:
         num_rooms: Number of rooms
+        gen: Generator for RNG
 
     Returns:
         Corners which rooms are placed in the map
     """
     corners = ["TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT"]
     assert num_rooms <= len(corners)
-    random.shuffle(corners)
+    _random_shuffle(corners, gen)
     return [corners[i] for i in range(num_rooms)]
 
 
@@ -111,8 +125,9 @@ def get_room_offset_corner(m: np.ndarray, room: np.ndarray, room_position: str) 
     """Get the room offset for a corner placed room
     Args:
         m: The underlying map
-        room: The room to insert 
+        room: The room to insert
         room_position: Position of the map the room is placed in
+        gen: Generator for RNG
 
     Returns:
         Offset index for the room (top left index)
@@ -136,7 +151,7 @@ def get_blocked_idx_corner(m: np.ndarray, room: np.ndarray, room_position: str) 
     """Get the list of blocked indices given a corner room position
     Args:
         m: The underlying map
-        room: The room to insert 
+        room: The room to insert
         room_position: Position of the map the room is placed in
 
     Returns:
@@ -147,7 +162,12 @@ def get_blocked_idx_corner(m: np.ndarray, room: np.ndarray, room_position: str) 
     return [(r + start_r, c + start_c) for r in range(rows_room) for c in range(cols_room)]
 
 
-def _create_base_room(width: int, height: int, fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden):
+def _create_base_room(
+    width: int, 
+    height: int, 
+    fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden, 
+    gen: np.random.RandomState = None
+) -> np.ndarray:
     m = np.zeros((height, width), dtype=np.uint8)
     for r in range(height):
         m[r, 0] = tilestr_to_hiddencellid["wall_brick"]  # left column
@@ -155,32 +175,43 @@ def _create_base_room(width: int, height: int, fill_tiles: Tuple[HiddenCellType]
     for c in range(width):
         m[0, c] = tilestr_to_hiddencellid["wall_brick"]  # top row
         m[height - 1, c] = tilestr_to_hiddencellid["wall_brick"]  # bottom row
-    fill_room(m, fill_tiles)
+    fill_room(m, fill_tiles, gen)
     return m
 
 
-def create_empty_room(room_width: int = 8, room_height: int = 8, fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden):
+def create_empty_room(
+    room_width: int = 8,
+    room_height: int = 8,
+    fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden,
+    gen: np.random.RandomState = None,
+) -> np.ndarray:
     """Create an empty square map.
     Args:
         room_width: The width of the room
         room_height: The height of the room
         fill_tiles: Background tiles to fill room
+        gen: Generator for RNG
 
     Returns:
         An empty room
     """
-    m = _create_base_room(room_width, room_height, fill_tiles=fill_tiles)
+    m = _create_base_room(room_width, room_height, fill_tiles=fill_tiles, gen=gen)
     return m
 
 
-def create_empty_map(map_size: int, fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden):
+def create_empty_map(
+    map_size: int, 
+    fill_tiles: Tuple[HiddenCellType] = rnd_background_tiles_hidden, 
+    gen: np.random.RandomState = None
+) -> np.ndarray:
     """Create an empty square map.
     Args:
         map_size: The width/height of the room
         fill_tiles: Background tiles to fill room
+        gen: Generator for RNG
 
     Returns:
         An empty map
     """
-    m = _create_base_room(map_size, map_size, fill_tiles=fill_tiles)
+    m = _create_base_room(map_size, map_size, fill_tiles=fill_tiles, gen=gen)
     return m

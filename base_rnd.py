@@ -26,6 +26,8 @@ class RNDBaseEnv(BaseEnvironment):
         max_steps: int = 1000,
         use_noop: bool = False,
         env_mode: int = 2,
+        seed: int = 0,
+        randomize_on_reset: bool = True,
         render_width: int = -1,
         render_height: int = -1,
         tensor_width: int = 320,
@@ -40,6 +42,8 @@ class RNDBaseEnv(BaseEnvironment):
             max_steps: Maximum number of steps before environment is over.
             use_noop: Flag to use noop action of standing still
             env_mode: The mode the stones_n_gems environment is using (see implementation)
+            seed: Seed for the environment
+            randomize_on_reset: Flag to randomize environment on reset
             render_width: Width of the image when rendered
             render_height: Height of the imeage when rendered
             tensor_width: Width of the tensor representation of state image
@@ -53,12 +57,19 @@ class RNDBaseEnv(BaseEnvironment):
         self._base_dir = base_dir
         self._num_actions = 5 if use_noop else 4
         self._env_mode = env_mode
+        self._seed = seed
+        self._randomize_on_reset = randomize_on_reset
+        self._rng = np.random.RandomState(seed)
         self._render_width = render_width
         self._render_height = render_height
         self._tensor_width = tensor_width
         self._tensor_height = tensor_height
 
         self._reset_internal_metrics()
+
+    def _reset_rnd(self):
+        if not self._randomize_on_reset:
+            self._rng = np.random.RandomState(self._seed)
 
     def _reset_internal_metrics(self):
         self._done = False
@@ -70,7 +81,7 @@ class RNDBaseEnv(BaseEnvironment):
         base_obs_shape = self._env.game.observation_tensor_shape()
         state = np.array(time_step.observations["info_state"][0], dtype="uint16").reshape(base_obs_shape)
         if not show_ids:
-            state = np.array(state > 0, dtype="uint16")
+            state = np.array(state > 0, dtype="uint8")
         return state
 
     def _get_random_map(self):

@@ -18,18 +18,23 @@ class RNDSingleRoom(RNDBaseEnv):
         max_steps: int = 1000,
         use_noop: bool = True,
         env_mode: int = 2,
+        seed: int = 0,
+        randomize_on_reset: bool = True,
         render_width: int = -1,
         render_height: int = -1,
         tensor_width: int = 320,
         tensor_height: int = 320,
     ):
-        """RND environment consisting of a single diamond and the exit in a closed room.
+        """RND environment for navigating to the open exit.
+
         Args:
             map_details: map storage object, should have key of "map_id" which holds tile ids of map
             base_dir: Base directory for the map_details if not using single map
             max_steps: Maximum number of steps before environment is over.
             use_noop: Flag to use noop action of standing still
             env_mode: The mode the stones_n_gems environment is using (see implementation)
+            seed: Seed for the environment
+            randomize_on_reset: Flag to randomize environment on reset
             render_width: Width of the image when rendered
             render_height: Height of the imeage when rendered
             tensor_width: Width of the tensor representation of state image
@@ -39,6 +44,8 @@ class RNDSingleRoom(RNDBaseEnv):
             max_steps=max_steps,
             use_noop=use_noop,
             env_mode=env_mode,
+            seed=seed,
+            randomize_on_reset=randomize_on_reset,
             render_width=render_width,
             render_height=render_height,
             tensor_width=tensor_width,
@@ -47,20 +54,21 @@ class RNDSingleRoom(RNDBaseEnv):
         self._map_size = map_size
 
     def _create_map(self):
-        m = create_empty_map(self._map_size)
-        room1 = create_empty_room()
-        room_positions = get_room_positions_corner(1)
+        self._reset_rnd()
+        m = create_empty_map(self._map_size, gen=self._rng)
+        room1 = create_empty_room(gen=self._rng)
+        room_positions = get_room_positions_corner(1, gen=self._rng)
         room_positions = ["BOTTOM_RIGHT"]
         room_offset = get_room_offset_corner(m, room1, room_positions[0])
 
-        add_item_inside_room(room1, HiddenCellType.kExitClosed)
-        add_item_border_corner(room1, HiddenCellType.kGateRedClosed, room_positions[0])
+        add_item_inside_room(room1, HiddenCellType.kExitClosed, gen=self._rng)
+        add_item_border_corner(room1, HiddenCellType.kGateRedClosed, room_positions[0], gen=self._rng)
         blocked_idxs = get_blocked_idx_corner(m, room1, room_positions[0])
         add_room_to_map(m, room1, room_offset)
         
-        add_item_inside_room(m, HiddenCellType.kKeyRed, blocked_tiles=blocked_idxs)
-        add_item_inside_room(m, HiddenCellType.kDiamond, blocked_tiles=blocked_idxs)
-        add_item_inside_room(m, HiddenCellType.kAgent, blocked_tiles=blocked_idxs)
+        add_item_inside_room(m, HiddenCellType.kKeyRed, blocked_tiles=blocked_idxs, gen=self._rng)
+        add_item_inside_room(m, HiddenCellType.kDiamond, blocked_tiles=blocked_idxs, gen=self._rng)
+        add_item_inside_room(m, HiddenCellType.kAgent, blocked_tiles=blocked_idxs, gen=self._rng)
         return m
 
     def _get_reward(self):

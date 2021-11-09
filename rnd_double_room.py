@@ -18,18 +18,23 @@ class RNDDoubleRoom(RNDBaseEnv):
         max_steps: int = 1000,
         use_noop: bool = True,
         env_mode: int = 2,
+        seed: int = 0,
+        randomize_on_reset: bool = True,
         render_width: int = -1,
         render_height: int = -1,
         tensor_width: int = 320,
         tensor_height: int = 320,
     ):
-        """RND environment consisting of a single diamond and two closed rooms.
+        """RND environment for navigating to the open exit.
+
         Args:
             map_details: map storage object, should have key of "map_id" which holds tile ids of map
             base_dir: Base directory for the map_details if not using single map
             max_steps: Maximum number of steps before environment is over.
             use_noop: Flag to use noop action of standing still
             env_mode: The mode the stones_n_gems environment is using (see implementation)
+            seed: Seed for the environment
+            randomize_on_reset: Flag to randomize environment on reset
             render_width: Width of the image when rendered
             render_height: Height of the imeage when rendered
             tensor_width: Width of the tensor representation of state image
@@ -39,6 +44,8 @@ class RNDDoubleRoom(RNDBaseEnv):
             max_steps=max_steps,
             use_noop=use_noop,
             env_mode=env_mode,
+            seed=seed,
+            randomize_on_reset=randomize_on_reset,
             render_width=render_width,
             render_height=render_height,
             tensor_width=tensor_width,
@@ -47,6 +54,7 @@ class RNDDoubleRoom(RNDBaseEnv):
         self._map_size = map_size
 
     def _create_map(self):
+        self._reset_rnd()
         m = create_empty_map(self._map_size)
         room1 = create_empty_room()
         room2 = create_empty_room()
