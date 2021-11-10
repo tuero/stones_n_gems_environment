@@ -11,7 +11,7 @@ from typing import Tuple
 
 
 def _random_choice(items: Tuple, gen: np.random.RandomState = None):
-    return random.choice(items) if gen is None else gen.choice(items)
+    return random.choice(items) if gen is None else items[gen.choice(len(items))]
 
 
 def _random_shuffle(items: Tuple, gen: np.random.RandomState = None):
