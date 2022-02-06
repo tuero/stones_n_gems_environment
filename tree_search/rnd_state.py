@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sys
 import os
+import copy
 import pyspiel
 import hashlib
 import numpy as np
@@ -9,6 +10,7 @@ from typing import TYPE_CHECKING
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import RewardCodes
+from util.rnd_util import pack_flat_map_str
 if TYPE_CHECKING:
     from typing import Tuple
 
@@ -72,7 +74,12 @@ class RNDState:
         pass
     
     def copy(self):
-        pass
+        new_state = copy.copy(self)
+        new_state._state = self._state.clone()
+        new_state._show_ids = copy.deepcopy(self._show_ids)
+        new_state._observation_shape = copy.deepcopy(self._observation_shape)
+        new_state._state_tensor = copy.deepcopy(self._state_tensor)
+        return new_state
 
     def __hash__(self):
         return hash(hashlib.sha1(self._state_tensor).hexdigest())
@@ -103,6 +110,8 @@ def main():
 
     state1 = RNDState(map_str, 1)
     state2 = RNDState(map_str, 1)
+
+    state2 = state1.copy()
 
     print(state1 == state2)
     # print("hash s1 {}".format(hash(state1)))
