@@ -1,11 +1,13 @@
 import os
 import sys
 import random
+import copy
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import tilestr_to_hiddencellid, HiddenCellType
 from util.rnd_definitions import rnd_background_tiles_hidden
+from util.rnd_definitions import rnd_keys_hidden, rnd_doors_hidden, rnd_doorsopen_hidden
 
 from typing import Tuple
 
@@ -215,3 +217,38 @@ def create_empty_map(
     """
     m = _create_base_room(map_size, map_size, fill_tiles=fill_tiles, gen=gen)
     return m
+
+
+def map_to_str(m, max_steps: int, num_gems: int) -> str:
+    rows, cols = m.shape[0], m.shape[1]
+    output_str = "{},{},{},{}\n".format(rows, cols, max_steps, num_gems)
+    for r in range(rows):
+        for c in range(cols):
+            output_str += "{:02d},".format(m[r, c])
+        output_str = output_str[:-1] + "\n"
+    return output_str[:-1]
+
+
+def flatten_map_str(map_str: str) -> str:
+    return map_str.replace("\n", ",")
+
+def pack_flat_map_str(flat_map_str: str) -> str:
+    map_str_list = flat_map_str.split(",")
+    output_str = ",".join(map_str_list[:4]) + "\n"
+    rows, cols = int(map_str_list[0]), int(map_str_list[1])
+    for r in range(rows):
+        for c in range(cols):
+            output_str += "{},".format(map_str_list[r*cols + c + 4])
+        output_str = output_str[:-1] + "\n"
+    return output_str[:-1]
+
+def get_shuffled_keys_doors(gen: np.random.RandomState = None):
+    keys = copy.deepcopy(rnd_keys_hidden)
+    doors_closed = copy.deepcopy(rnd_doors_hidden)
+    doors_open = copy.deepcopy(rnd_doorsopen_hidden)
+    idx_shuffle = [i for i in range(len(keys))]
+    _random_shuffle(idx_shuffle, gen=gen)
+    keys = [keys[i] for i in idx_shuffle]
+    doors_closed = [doors_closed[i] for i in idx_shuffle]
+    doors_open = [doors_open[i] for i in idx_shuffle]
+    return keys, doors_closed, doors_open
