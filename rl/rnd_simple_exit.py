@@ -3,8 +3,8 @@ import sys
 import logging
 from open_spiel.python import rl_environment
 
-sys.path.append(os.path.dirname(__file__))
-from base_rnd import RNDBaseEnv
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from rl.base_rnd import RNDBaseEnv
 
 from util.rnd_util import create_empty_map, add_item_inside_room
 from util.rnd_definitions import HiddenCellType, hiddencell_to_mapstr, RewardCodes

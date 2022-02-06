@@ -3,8 +3,8 @@ import sys
 import logging
 from open_spiel.python import rl_environment
 
-sys.path.append(os.path.dirname(__file__))
-from base_rnd import RNDBaseEnv
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from rl.base_rnd import RNDBaseEnv
 
 from util.rnd_util import create_empty_map, create_empty_room
 from util.rnd_util import add_item_border_corner, add_item_inside_room, add_room_to_map

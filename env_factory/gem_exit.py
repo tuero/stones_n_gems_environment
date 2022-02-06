@@ -1,5 +1,9 @@
+import os
+import sys
 import itertools
 import numpy as np
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_util import *
 from util.rnd_util import _random_choice
 

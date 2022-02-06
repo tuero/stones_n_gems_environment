@@ -9,7 +9,7 @@ import cv2
 import logging
 from open_spiel.python import rl_environment
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import tilestr_to_visiblecellid, hiddencell_to_mapstr
 from util.img_draw import rnd_state_to_img
 

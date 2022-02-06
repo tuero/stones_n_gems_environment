@@ -1,9 +1,11 @@
 import os
+import sys
 import copy
 import random
 from multiprocessing import Pool, Manager
 import argparse
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from env_factory.gem_key_exit import create_gem_key_exit
 from util.rnd_util import flatten_map_str
 

@@ -1,10 +1,13 @@
 from __future__ import annotations
+import sys
+import os
 import pyspiel
 import hashlib
 import numpy as np
 
 from typing import TYPE_CHECKING
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import RewardCodes
 if TYPE_CHECKING:
     from typing import Tuple
@@ -51,7 +54,7 @@ class RNDState:
     
     def is_solution(self):
         reward_code = self._get_reward_code()
-        # Solution only if terminal + reason for terminal is walking throuhg exit
+        # Solution only if terminal + reason for terminal is walking through exit
         return self._state.is_terminal() and (reward_code & RewardCodes.kRewardWalkThroughExit > 0)
     
     def apply_action(self, action):

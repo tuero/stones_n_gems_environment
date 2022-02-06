@@ -8,11 +8,11 @@ import numpy as np
 from ptu.util.render import Render
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from base_rnd import RNDBaseEnv
-from rnd_simple_exit import RNDSimpleExit
-from rnd_single_diamond import RNDSingleDiamond
-from rnd_single_room import RNDSingleRoom
-from rnd_double_room import RNDDoubleRoom
+from rl.base_rnd import RNDBaseEnv
+from rl.rnd_simple_exit import RNDSimpleExit
+from rl.rnd_single_diamond import RNDSingleDiamond
+from rl.rnd_single_room import RNDSingleRoom
+from rl.rnd_double_room import RNDDoubleRoom
 
 
 class _Getch:
