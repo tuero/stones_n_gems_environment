@@ -221,24 +221,24 @@ def create_empty_map(
 
 def map_to_str(m, max_steps: int, num_gems: int) -> str:
     rows, cols = m.shape[0], m.shape[1]
-    output_str = "{},{},{},{}\n".format(rows, cols, max_steps, num_gems)
+    output_str = "{}|{}|{}|{}\n".format(rows, cols, max_steps, num_gems)
     for r in range(rows):
         for c in range(cols):
-            output_str += "{:02d},".format(m[r, c])
+            output_str += "{:02d}|".format(m[r, c])
         output_str = output_str[:-1] + "\n"
     return output_str[:-1]
 
 
 def flatten_map_str(map_str: str) -> str:
-    return map_str.replace("\n", ",")
+    return map_str.replace("\n", "|")
 
 def pack_flat_map_str(flat_map_str: str) -> str:
-    map_str_list = flat_map_str.split(",")
-    output_str = ",".join(map_str_list[:4]) + "\n"
+    map_str_list = flat_map_str.split("|")
+    output_str = "|".join(map_str_list[:4]) + "\n"
     rows, cols = int(map_str_list[0]), int(map_str_list[1])
     for r in range(rows):
         for c in range(cols):
-            output_str += "{},".format(map_str_list[r*cols + c + 4])
+            output_str += "{}|".format(map_str_list[r*cols + c + 4])
         output_str = output_str[:-1] + "\n"
     return output_str[:-1]
 

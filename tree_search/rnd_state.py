@@ -2,6 +2,7 @@ from __future__ import annotations
 import sys
 import os
 import copy
+import pickle
 import pyspiel
 import hashlib
 import numpy as np
@@ -17,11 +18,12 @@ if TYPE_CHECKING:
 
 class RNDState:
 
-    def __init__(self, map_str: str, reward_structure: int = 0, obs_show_ids: bool = True):
+    def __init__(self, map_str: str, reward_structure: int = 0, obs_show_ids: bool = True, same_obs_equal=True):
         env_configs = {"grid": map_str, "obs_show_ids": True, "reward_structure": reward_structure}
         game = pyspiel.load_game("stones_and_gems", env_configs)
         self._state = game.new_initial_state()
         self._show_ids = obs_show_ids
+        self._same_obs_equal = same_obs_equal
         self._observation_shape = game.observation_tensor_shape()
         self._state_tensor = self._timestep_to_state()
         self._sample_external_events()
@@ -72,50 +74,46 @@ class RNDState:
     
     def reset(self):
         pass
-    
-    def copy(self):
-        new_state = copy.copy(self)
-        new_state._state = self._state.clone()
-        new_state._show_ids = copy.deepcopy(self._show_ids)
-        new_state._observation_shape = copy.deepcopy(self._observation_shape)
-        new_state._state_tensor = copy.deepcopy(self._state_tensor)
-        return new_state
 
     def __hash__(self):
-        return hash(hashlib.sha1(self._state_tensor).hexdigest())
+        if self._same_obs_equal:
+            return hash(hashlib.sha1(self._state_tensor).hexdigest())
+        else:
+            return hash(self._state.serialize())
 
-    def __eq__(self, other):        
-        return np.array_equal(self._state_tensor, other._state_tensor)
+    def __eq__(self, other):
+        if self._same_obs_equal:
+            return np.array_equal(self._state_tensor, other._state_tensor)
+        else:
+            return self._state.serialize() == other._state.serialize()
 
 
 def main():
-    map_str =   "12,12,999999,1\n" \
-                "18,18,18,18,18,18,18,18,18,18,18,18\n" \
-                "18,02,02,02,02,02,02,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,04,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,02,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,01,02,02,02,02,18\n" \
-                "18,02,02,02,00,02,01,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,01,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,01,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,02,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,02,02,02,02,02,18\n" \
-                "18,02,02,02,02,02,02,02,02,02,08,18\n" \
-                "18,18,18,18,18,18,18,18,18,18,18,18"
+    map_str =   "12|12|999999|1\n" \
+                "18|18|18|18|18|18|18|18|18|18|18|18\n" \
+                "18|02|02|02|02|02|02|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|04|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|02|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|01|02|02|02|02|18\n" \
+                "18|02|02|02|00|02|01|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|01|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|01|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|02|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|02|02|02|02|02|18\n" \
+                "18|02|02|02|02|02|02|02|02|02|08|18\n" \
+                "18|18|18|18|18|18|18|18|18|18|18|18"
     # env_configs = {"grid": map_str, "obs_show_ids": True, "reward_structure": 0}
     # game = pyspiel.load_game("stones_and_gems", env_configs)
 
-    # state = game.new_initial_state()
-    # print(state)
+    same_obs_equal = True
+    state1 = RNDState(map_str, 1, same_obs_equal=same_obs_equal)
+    state2 = RNDState(map_str, 1, same_obs_equal=same_obs_equal)
 
-    state1 = RNDState(map_str, 1)
-    state2 = RNDState(map_str, 1)
-
-    state2 = state1.copy()
+    state2 = copy.deepcopy(state1)
 
     print(state1 == state2)
-    # print("hash s1 {}".format(hash(state1)))
-    # print("hash s2 {}".format(hash(state2)))
+    print("hash s1 {}".format(hash(state1)))
+    print("hash s2 {}".format(hash(state2)))
     print()
 
     state1.apply_action(1)
@@ -141,10 +139,8 @@ def main():
     print("hash s1 {}".format(hash(state1)))
     print("hash s2 {}".format(hash(state2)))
 
-    print(state1._state)
-    print(state2._state)
-    # print(state1.get_image_representation()[0])
-
+    state1 = copy.deepcopy(state2)
+    print(state1 == state2)
 
 
 
