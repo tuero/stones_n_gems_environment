@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing import Tuple
 
 
-class RNDState:
+class RNDTreeState:
 
     def __init__(self, map_str: str, reward_structure: int = 0, obs_show_ids: bool = True, same_obs_equal=True):
         env_configs = {"grid": map_str, "obs_show_ids": True, "reward_structure": reward_structure}
@@ -47,7 +47,7 @@ class RNDState:
         # Agent dies -> deadlock but not solution
         if reward_code & RewardCodes.kRewardAgentDies > 0:
             return []
-        return [i for i in range(RNDState.num_actions())]
+        return [i for i in range(RNDTreeState.num_actions())]
     
     @staticmethod
     def num_actions() -> int:
@@ -106,8 +106,8 @@ def main():
     # game = pyspiel.load_game("stones_and_gems", env_configs)
 
     same_obs_equal = True
-    state1 = RNDState(map_str, 1, same_obs_equal=same_obs_equal)
-    state2 = RNDState(map_str, 1, same_obs_equal=same_obs_equal)
+    state1 = RNDTreeState(map_str, 1, same_obs_equal=same_obs_equal)
+    state2 = RNDTreeState(map_str, 1, same_obs_equal=same_obs_equal)
 
     state2 = copy.deepcopy(state1)
 
