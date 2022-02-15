@@ -8,7 +8,7 @@ import numpy as np
 from ptu.util.render import Render
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from tree_search.rnd_state import RNDState
+from tree_search.rnd_state_spiel import RNDState
 from util.img_draw import rnd_state_to_img
 
 

@@ -1,10 +1,8 @@
 import sys
 import os
-import time
-from enum import IntEnum
+import hashlib
 from copy import deepcopy
 import numpy as np
-from wandb import agent
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import *
@@ -13,7 +11,7 @@ from rnd_py.rnd_game_util import *
 
 # Default game parameters
 kDefaultGameParams = {
-    "obs_show_ids": True,  # Flag to show object ids in observation instead of binary channels
+    "obs_show_ids": False,  # Flag to show object ids in observation instead of binary channels
     "magic_wall_steps": 140,  # Number of steps before magic wall expire
     "blob_chance": 20,  # Chance to spawn another blob (out of 256)
     "blob_max_percentage": 0.16,  # Max number of blobs before they collapse (percentage of map size)
@@ -215,6 +213,7 @@ class RNDGameState:
         elif self._is_type(coord, kElNut, Directions.kDown):  # Falling on nut -> diamond
             self._id_counter += 1
             self._set_item(coord, kElDiamond, self._id_counter, Directions.kDown)
+            self._reward_signal |= RewardCodes.kRewardNutToDiamond
         elif self._is_type(coord, kElBomb, Directions.kDown):  # Falling on bomb -> explode
             old_element = self._get_item(coord, Directions.kDown)
             exploded_element = kElementToExplosion[old_element] if old_element in kElementToExplosion else kElExplosionEmpty
@@ -308,6 +307,7 @@ class RNDGameState:
         elif self._is_type(coord, kElDiamond, action) or self._is_type(coord, kElDiamondFalling, action):  # Collect gems
             self._gems_collected += 1
             self._current_reward += kGemPoints[self._get_item(coord, action)]
+            self._reward_signal |= RewardCodes.kRewardCollectDiamond
             self._move_item(coord, action)
         elif IsActionHorz(action) and (
             self._is_type(coord, kElStone, action)
@@ -318,20 +318,25 @@ class RNDGameState:
         elif IsKey(self._get_item(coord, action)):  # Collecting key, set gate open
             self._open_gate(kKeyToGate[self._get_item(coord, action)])
             self._move_item(coord, action)
+            self._reward_signal |= RewardCodes.kRewardCollectKey
         elif IsOpenGate(self._get_item(coord, action)):  # Walking through open gate
             coord_gate = coord_from_action(coord, action)
             if self._has_property(coord_gate, ElementProperties.kTraversable, action):
-                if self._is_type(coord_gate, kElDiamond, action): # Could pass through onto diamond
+                if self._is_type(coord_gate, kElDiamond, action):  # Could pass through onto diamond
                     self._gems_collected += 1
                     self._current_reward += kGemPoints[kElDiamond]
+                    self._reward_signal |= RewardCodes.kRewardCollectDiamond
                 elif IsKey(self._get_item(coord_gate, action)):  # Could pass through onto key
                     self._open_gate(kKeyToGate[self._get_item(coord_gate, action)])
+                    self._reward_signal |= RewardCodes.kRewardCollectKey
                 self._set_item(coord_gate, kElAgent, self._grid_to_id(coord), action)
                 self._set_item(coord, kElEmpty, 1)
+                self._reward_signal |= RewardCodes.kRewardWalkThroughGate
         elif self._is_type(coord, kElExitOpen, action):  # Walking though exit
             self._move_item(coord, action)
             self._set_item(coord, kElAgentInExit, self._grid_to_id(coord), action)  # Different from open_spiel
             self._current_reward += self._steps_remaining if self._steps_remaining is not None else kGemPoints[kElAgentInExit]
+            self._reward_signal |= RewardCodes.kRewardWalkThroughExit
 
     def _update_firefly(self, coord: Tuple[int, int], action: Directions) -> None:
         new_direction = kRotateLeft[action]
@@ -414,6 +419,8 @@ class RNDGameState:
     def _update_explosions(self, coord: Tuple[int, int]) -> None:
         self._id_counter += 1
         self._set_item(coord, kExplosionToElement[self._get_item(coord)], self._id_counter)
+        if kExplosionToElement[self._get_item(coord)] == kElDiamond:
+            self._reward_signal |= RewardCodes.kRewardButterflyToDiamond
 
     def _start_scan(self) -> None:
         # Update global flags
@@ -422,6 +429,7 @@ class RNDGameState:
         self._current_reward = 0.0
         self._blob_size = 0
         self._blob_enclosed = True
+        self._reward_signal = 0
         # Reset elements
         self._has_updated[:] = False
 
@@ -437,8 +445,7 @@ class RNDGameState:
         self._magic_active = self._magic_active and self._magic_wall_steps > 0
 
     def reset(self) -> None:
-        """Reset the state to the beginning
-        """
+        """Reset the state to the beginning"""
         self._magic_wall_steps = self._params["magic_wall_steps"]
         self._magic_active = False
         self._blob_size = 0
@@ -453,6 +460,7 @@ class RNDGameState:
         self._rng = np.random.default_rng(self._seed)
         self._parse_grid()
         self._steps_remaining = self._max_steps
+        self._reward_signal = 0
 
     def apply_action(self, action: int) -> None:
         """Perform the action and step the state forward one step
@@ -490,7 +498,6 @@ class RNDGameState:
                     self._update_bomb((r, c))
                 elif element == kElBombFalling:
                     self._update_bomb_falling((r, c))
-
                 elif element == kElExitClosed:
                     self._update_exit((r, c))
                 elif IsButterfly(element):
@@ -509,20 +516,17 @@ class RNDGameState:
         self._end_scan()
 
     def is_terminal(self) -> bool:
-        """Return True if the game is over, false otherwise.
-        """
+        """Return True if the game is over, false otherwise."""
         out_of_time = self._steps_remaining is not None and self._steps_remaining <= 0
         return out_of_time or np.where(self._grid[int(HiddenCellType.kAgent), :, :])[0].size == 0
 
     def is_solution(self) -> bool:
-        """Return True if the game is solved, false otherwise.
-        """
+        """Return True if the game is solved, false otherwise."""
         out_of_time = self._steps_remaining is not None and self._steps_remaining <= 0
         return not out_of_time or np.where(self._grid[int(HiddenCellType.kAgent), :, :])[0].size == 0
 
     def get_observation(self) -> np.ndarray:
-        """Get the current observation as an numpy array
-        """
+        """Get the current observation as an numpy array"""
         obs = np.zeros((NUM_VISIBLE_CELL_TYPE, self._rows, self._cols), dtype=np.float32)
         for r in range(self._rows):
             for c in range(self._cols):
@@ -531,30 +535,40 @@ class RNDGameState:
                 obs[obs_channel, r, c] = self._grid[grid_channel, r, c] if self._obs_show_ids else 1
         return obs
 
-
     def legal_actions(self) -> Tuple[int]:
-        """Gets the current legal actions set
-        """
+        """Gets the current legal actions set"""
         return [] if self.is_terminal() else [int(a) for a in Actions]
-                
+
+    def observation_shape(self) -> Tuple[int]:
+        """Get the observation shape"""
+        return (NUM_VISIBLE_CELL_TYPE, self._rows, self._cols)
+
+    def get_reward_signal(self) -> int:
+        """Get the current reward signal"""
+        return self._reward_signal
+
+    def __hash__(self) -> int:
+        v = self.get_observation().view(np.uint8)
+        return hash(hashlib.sha1(v).hexdigest())
 
 
 def main():
     print("Paste map string: ")
-    sentinel=''
-    map_str = '\n'.join(iter(input, sentinel))
+    sentinel = ""
+    map_str = "\n".join(iter(input, sentinel))
     env = RNDGameState({"grid": map_str})
     NUM_STEPS = 1000
 
-    start = time.time()
-    for _ in range(NUM_STEPS):
-        env.apply_action(0)
-        obs = env.get_observation()
-    end = time.time()
-    duration = end - start
-    print("Total time for {} steps: {:.4f}s".format(NUM_STEPS, duration))
-    print("Time per step : {:.4f}s".format(duration / NUM_STEPS))
-    
+    print(hash(env))
+
+    # start = time.time()
+    # for _ in range(NUM_STEPS):
+    #     env.apply_action(0)
+    #     obs = env.get_observation()
+    # end = time.time()
+    # duration = end - start
+    # print("Total time for {} steps: {:.4f}s".format(NUM_STEPS, duration))
+    # print("Time per step : {:.4f}s".format(duration / NUM_STEPS))
 
 
 if __name__ == "__main__":

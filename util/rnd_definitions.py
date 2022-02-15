@@ -22,6 +22,7 @@ class RewardCodes(IntEnum):
     kRewardNutToDiamond = 1 << 3
     kRewardCollectKey = 1 << 4
     kRewardWalkThroughGate = 1 << 5
+    kRewardButterflyToDiamond = 1 << 6
 
 
 # Hidden celltypes for the OpenSpiel stones_and_gems environment.
