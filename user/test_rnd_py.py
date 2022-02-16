@@ -88,7 +88,7 @@ def play(env: RNDGameState):
         if not done:
             r.draw(rnd_state_to_img(env.get_observation()))
 
-        print(action)
+        print("{} {} {}".format(action, env.is_solution(), env.is_terminal()))
 
     r.close()
 

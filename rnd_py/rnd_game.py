@@ -418,9 +418,9 @@ class RNDGameState:
 
     def _update_explosions(self, coord: Tuple[int, int]) -> None:
         self._id_counter += 1
-        self._set_item(coord, kExplosionToElement[self._get_item(coord)], self._id_counter)
         if kExplosionToElement[self._get_item(coord)] == kElDiamond:
             self._reward_signal |= RewardCodes.kRewardButterflyToDiamond
+        self._set_item(coord, kExplosionToElement[self._get_item(coord)], self._id_counter)
 
     def _start_scan(self) -> None:
         # Update global flags
@@ -523,7 +523,7 @@ class RNDGameState:
     def is_solution(self) -> bool:
         """Return True if the game is solved, false otherwise."""
         out_of_time = self._steps_remaining is not None and self._steps_remaining <= 0
-        return not out_of_time or np.where(self._grid[int(HiddenCellType.kAgent), :, :])[0].size == 0
+        return not out_of_time and np.where(self._grid[int(HiddenCellType.kAgentInExit), :, :])[0].size == 1
 
     def get_observation(self) -> np.ndarray:
         """Get the current observation as an numpy array"""
