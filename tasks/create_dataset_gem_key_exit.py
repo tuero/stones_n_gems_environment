@@ -23,7 +23,7 @@ config_easy = {
 
 config_medium = {
     "size": 18,
-    "num_gems": [4, 8],
+    "num_gems": [2, 8],
     "num_rooms": [1, 3],
     "room_size": 6,
     "num_locked_doors": [1, 3],

@@ -42,8 +42,9 @@ def create_gem_key_exit(
     # Keys and doors ordering
     assert num_locked_doors <= 4
     keys, doors_closed, doors_open = get_shuffled_keys_doors(gen=rng)
+    exit_type = HiddenCellType.kExitClosed if num_gems > 0 else HiddenCellType.kExitOpen
     items_in_room = {
-        0 : [HiddenCellType.kExitClosed] if keys_in_order else [HiddenCellType.kExitClosed, keys[2]],
+        0 : [exit_type] if keys_in_order else [exit_type, keys[2]],
         1 : [keys[0]],
         2 : [keys[1]],
         3 : [keys[2]] if keys_in_order else [],

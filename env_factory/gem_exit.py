@@ -47,7 +47,7 @@ def create_env_gem_exit(
         while True:
             try:
                 room_idx = _random_choice([i for i in range(num_rooms)], gen=rng)
-                add_item_inside_room(rooms[room_idx], HiddenCellType.kExitClosed, gen=rng)
+                add_item_inside_room(rooms[room_idx], HiddenCellType.kExitClosed if num_gems > 0 else HiddenCellType.kExitOpen, gen=rng)
                 break
             except:
                 pass
@@ -66,7 +66,7 @@ def create_env_gem_exit(
 
     # Place agent and exit if we haven't already
     if not exit_in_room or num_rooms == 0:
-        add_item_inside_room(m, HiddenCellType.kExitClosed, blocked_tiles=blocked_idxs, gen=rng)
+        add_item_inside_room(m, HiddenCellType.kExitClosed if num_gems > 0 else HiddenCellType.kExitOpen, blocked_tiles=blocked_idxs, gen=rng)
     add_item_inside_room(m, HiddenCellType.kAgent, blocked_tiles=blocked_idxs, gen=rng)
 
     return map_to_str(m, max_steps=max_steps, num_gems=num_gems)
