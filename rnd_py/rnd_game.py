@@ -29,22 +29,25 @@ class RNDGameState:
         for k, v in game_params.items():
             params[k] = v
 
-        self._params = params
+        # self._params = params
 
         # Set members
-        self.reset()
+        self.reset(params)
 
-    def _parse_grid(self) -> None:
-        splt_symbol = "," if self._params["grid"].count(",") > 0 else "|"
-        lines = [list(map(int, s.split(splt_symbol))) for s in self._params["grid"].split("\n")]
+    def _parse_grid(self, params) -> None:
+        splt_symbol = "," if params["grid"].count(",") > 0 else "|"
+        lines = [list(map(int, s.split(splt_symbol))) for s in params["grid"].split("\n")]
         assert len(lines[0]) == 4
         self._cols, self._rows, self._gems_required = lines[0][0], lines[0][1], lines[0][3]
         self._max_steps = lines[0][2] if lines[0][2] > 0 else None
-        self._blob_max_size = self._params["blob_max_percentage"] * self._cols * self._rows
+        self._blob_max_size = params["blob_max_percentage"] * self._cols * self._rows
 
         # Create grid
         lines = lines[1:]
-        self._grid = np.zeros((NUM_HIDDEN_CELL_TYPE, self._rows, self._cols), dtype=np.uint16)
+        if self._obs_show_ids:
+            self._grid = np.zeros((NUM_HIDDEN_CELL_TYPE, self._rows, self._cols), dtype=np.uint16)
+        else:
+            self._grid = np.zeros((NUM_HIDDEN_CELL_TYPE, self._rows, self._cols), dtype=bool)
         self._has_updated = np.zeros((self._rows, self._cols), dtype=bool)
         assert len(lines) == self._rows
         for r, line in enumerate(lines):
@@ -54,8 +57,26 @@ class RNDGameState:
                 if line[c] == HiddenCellType.kEmpty or line[c] == HiddenCellType.kDirt:
                     self._grid[line[c], r, c] = 1
                 else:
-                    self._id_counter += 1
+                    self._increment_counter()
                     self._grid[line[c], r, c] = self._id_counter
+
+        self._unpacked_size = self._grid.size
+        self._unpacked_shape = self._grid.shape
+        self._pack_grid()
+
+    def _pack_grid(self):
+        if not self._obs_show_ids:
+            self._grid = np.packbits(self._grid, axis=None)
+
+    def _unpack_grid(self):
+        if not self._obs_show_ids:
+            self._grid = np.unpackbits(self._grid, count=self._unpacked_size).reshape(self._unpacked_shape).view(bool)
+
+    def _increment_counter(self):
+        if self._obs_show_ids:
+            self._id_counter += 1
+        else:
+            self._id_counter = 1
 
     def _check_channel(self, coord: Tuple[int, int]) -> bool:
         channel_index = np.where(self._grid[(slice(None), *coord)] > 0)[0]
@@ -162,14 +183,14 @@ class RNDGameState:
         # Need to ensure cell below magic wall is empty (so item can pass through)
         if self._is_type(coord_below, kElEmpty, Directions.kDown):
             self._set_item(coord, kElEmpty, 1)  # Empty and dirt ids are 1
-            self._id_counter += 1
+            self._increment_counter()
             self._set_item(coord_below, element, self._id_counter, Directions.kDown)  # Spawned element gets new id
 
     def _explode(self, coord: Tuple[int, int], element: Element, action: Directions = Directions.kNone) -> None:
         new_coord = coord_from_action(coord, action)
         old_element = self._get_item(new_coord)
         exploded_element = kElementToExplosion[old_element] if old_element in kElementToExplosion else kElExplosionEmpty
-        self._id_counter += 1
+        self._increment_counter()
         self._set_item(new_coord, element, self._id_counter)
 
         # Recursively check all directions for chain explosions
@@ -179,7 +200,7 @@ class RNDGameState:
             if self._has_property(new_coord, ElementProperties.kCanExplode, direction):
                 self._explode(new_coord, exploded_element, direction)
             elif self._has_property(new_coord, ElementProperties.kConsumable, direction):
-                self._id_counter += 1
+                self._increment_counter()
                 self._set_item(new_coord, exploded_element, self._id_counter, direction)
 
     def _open_gate(self, el_gate_closed: Element) -> None:
@@ -211,7 +232,7 @@ class RNDGameState:
         ):  # Convert item through magic wall
             self._move_through_magic(coord, kMagicWallConversion[self._get_item(coord)])
         elif self._is_type(coord, kElNut, Directions.kDown):  # Falling on nut -> diamond
-            self._id_counter += 1
+            self._increment_counter()
             self._set_item(coord, kElDiamond, self._id_counter, Directions.kDown)
             self._reward_signal |= RewardCodes.kRewardNutToDiamond
         elif self._is_type(coord, kElBomb, Directions.kDown):  # Falling on bomb -> explode
@@ -400,7 +421,7 @@ class RNDGameState:
 
     def _update_blob(self, coord: Tuple[int, int]) -> None:
         if self._blob_swap != kNullElement:  # Replace blob if swap element set
-            self._id_counter += 1
+            self._increment_counter()
             self._set_item(coord, self._blob_swap, self._id_counter)
         else:
             self._blob_size += 1
@@ -413,11 +434,11 @@ class RNDGameState:
             possible_directions = [Directions.kUp, Directions.kLeft, Directions.kDown, Directions.kRight]
             direction_grow = possible_directions[self._rng.choice(len(possible_directions))]
             if will_grow and (self._is_type(coord, kElEmpty, direction_grow) or self._is_type(coord, kElDirt, direction_grow)):
-                self._id_counter += 1
+                self._increment_counter()
                 self._set_item(coord, kElBlob, self._id_counter, direction_grow)
 
     def _update_explosions(self, coord: Tuple[int, int]) -> None:
-        self._id_counter += 1
+        self._increment_counter()
         if kExplosionToElement[self._get_item(coord)] == kElDiamond:
             self._reward_signal |= RewardCodes.kRewardButterflyToDiamond
         self._set_item(coord, kExplosionToElement[self._get_item(coord)], self._id_counter)
@@ -432,6 +453,7 @@ class RNDGameState:
         self._reward_signal = 0
         # Reset elements
         self._has_updated[:] = False
+        self._unpack_grid()
 
     def _end_scan(self) -> None:
         if self._blob_swap == kNullElement:  # Check if blob status
@@ -443,22 +465,23 @@ class RNDGameState:
             self._magic_wall_steps = max(self._magic_wall_steps - 1, 0)
         # Check if still active
         self._magic_active = self._magic_active and self._magic_wall_steps > 0
+        self._pack_grid()
 
-    def reset(self) -> None:
+    def reset(self, params) -> None:
         """Reset the state to the beginning"""
-        self._magic_wall_steps = self._params["magic_wall_steps"]
+        self._magic_wall_steps = params["magic_wall_steps"]
         self._magic_active = False
         self._blob_size = 0
-        self._blob_chance = self._params["blob_chance"]
+        self._blob_chance = params["blob_chance"]
         self._blob_enclosed = False
         self._blob_swap = kNullElement
         self._gems_collected = 0
         self._current_reward = 0
-        self._obs_show_ids = self._params["obs_show_ids"]
+        self._obs_show_ids = params["obs_show_ids"]
         self._id_counter = 1
-        self._seed = self._params["rng_seed"]
+        self._seed = params["rng_seed"]
         self._rng = np.random.default_rng(self._seed)
-        self._parse_grid()
+        self._parse_grid(params)
         self._steps_remaining = self._max_steps
         self._reward_signal = 0
 
@@ -517,22 +540,30 @@ class RNDGameState:
 
     def is_terminal(self) -> bool:
         """Return True if the game is over, false otherwise."""
+        self._unpack_grid()
         out_of_time = self._steps_remaining is not None and self._steps_remaining <= 0
-        return out_of_time or np.where(self._grid[int(HiddenCellType.kAgent), :, :])[0].size == 0
+        result = out_of_time or np.where(self._grid[int(HiddenCellType.kAgent), :, :])[0].size == 0
+        self._pack_grid()
+        return result
 
     def is_solution(self) -> bool:
         """Return True if the game is solved, false otherwise."""
+        self._unpack_grid()
         out_of_time = self._steps_remaining is not None and self._steps_remaining <= 0
-        return not out_of_time and np.where(self._grid[int(HiddenCellType.kAgentInExit), :, :])[0].size == 1
+        result = not out_of_time and np.where(self._grid[int(HiddenCellType.kAgentInExit), :, :])[0].size == 1
+        self._pack_grid()
+        return result
 
     def get_observation(self) -> np.ndarray:
         """Get the current observation as an numpy array"""
+        self._unpack_grid()
         obs = np.zeros((NUM_VISIBLE_CELL_TYPE, self._rows, self._cols), dtype=np.float32)
         for r in range(self._rows):
             for c in range(self._cols):
                 grid_channel = self._grid_to_channel((r, c))
                 obs_channel = HiddenToVisibleMapping[grid_channel]
                 obs[obs_channel, r, c] = self._grid[grid_channel, r, c] if self._obs_show_ids else 1
+        self._pack_grid()
         return obs
 
     def legal_actions(self) -> Tuple[int]:
@@ -549,7 +580,8 @@ class RNDGameState:
 
     def __hash__(self) -> int:
         v = self.get_observation().view(np.uint8)
-        return hash(hashlib.sha1(v).hexdigest())
+        # return hash(hashlib.sha1(v).hexdigest())
+        return int("0x{}".format(hashlib.sha1(v).hexdigest()), 0)
 
 
 def main():

@@ -22,7 +22,7 @@ class RNDTreeStatePy:
         self._show_ids = obs_show_ids
         self._step = 0
         self._same_obs_equal = same_obs_equal
-        self._state_tensor = self.get_image_representation()
+        # self._state_tensor = self.get_image_representation()
 
     def _get_reward_code(self):
         return self._state.get_reward_signal()
@@ -42,11 +42,14 @@ class RNDTreeStatePy:
     
     def is_solution(self):
         return self._state.is_solution()
+
+    def is_terminal(self):
+        return self._state.is_terminal()
     
     def apply_action(self, action):
         self._step += 1
         self._state.apply_action(action)
-        self._state_tensor = self.get_image_representation()
+        # self._state_tensor = self.get_image_representation()
     
     def get_image_representation(self):
         return self._state.get_observation()
@@ -65,7 +68,8 @@ class RNDTreeStatePy:
             return hash(self._state) + self._step
 
     def __eq__(self, other):
-        same_state = np.array_equal(self._state_tensor, other._state_tensor)
+        # same_state = np.array_equal(self._state_tensor, other._state_tensor)
+        same_state = hash(self._state) == hash(other._state)
         if self._same_obs_equal:
             return same_state
         else:

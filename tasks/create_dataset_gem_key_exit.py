@@ -9,9 +9,22 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from env_factory.gem_key_exit import create_gem_key_exit
 from util.rnd_util import flatten_map_str
 
-config_easy = {
+config_veryeasy = {
     "size": 14,
-    "num_gems": [2, 4],
+    "num_gems": [0, 2],
+    "num_rooms": [0, 1],
+    "room_size": 5,
+    "num_locked_doors": [0, 1],
+    "num_keys_in_main": [0, 2],
+    "ratio_gems_in_room": [0.25, 0.5],
+    "keys_in_order": True,
+    "max_steps" : 9999
+}
+
+
+config_easy = {
+    "size": 18,
+    "num_gems": [1, 3],
     "num_rooms": [0, 1],
     "room_size": 6,
     "num_locked_doors": [0, 1],
@@ -46,6 +59,7 @@ config_hard = {
 }
 
 config_all = {
+    "veryeasy" : config_veryeasy,
     "easy": config_easy,
     "medium": config_medium,
     "hard": config_hard,
@@ -72,7 +86,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_samples", help="Number of total samples", required=False, type=int, default=10000)
     parser.add_argument("--export_path", help="Export path for file", required=True, type=str)
-    parser.add_argument("--difficulty", help="Difficulty of maps", required=True, type=str, choices=["easy", "medium", "hard"])
+    parser.add_argument("--difficulty", help="Difficulty of maps", required=True, type=str, choices=["veryeasy", "easy", "medium", "hard"])
     args = parser.parse_args()
 
     manager = Manager()
