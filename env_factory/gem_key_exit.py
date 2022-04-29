@@ -25,6 +25,7 @@ def create_gem_key_exit(
     num_keys_in_main: int = 0,
     ratio_gems_in_room: float = 0,
     keys_in_order: bool = True,
+    exit_in_open: bool = False,
     max_steps: int = 9999
 ):
     # Empty map
@@ -44,11 +45,14 @@ def create_gem_key_exit(
     keys, doors_closed, doors_open = get_shuffled_keys_doors(gen=rng)
     exit_type = HiddenCellType.kExitClosed if num_gems > 0 else HiddenCellType.kExitOpen
     items_in_room = {
-        0 : [exit_type] if keys_in_order else [exit_type, keys[2]],
+        0 : [] if keys_in_order else [keys[2]],
         1 : [keys[0]],
         2 : [keys[1]],
         3 : [keys[2]] if keys_in_order else [],
     }
+
+    if not exit_in_open:
+        items_in_room[0].append(exit_type)
 
     # Add keys/doors in items
     # Keys in order                 Keys not in order
@@ -87,6 +91,10 @@ def create_gem_key_exit(
     # Place remaining gems in main portion of map
     for _ in range(num_gems - num_gems_in_rooms):
         add_item_inside_room(m, HiddenCellType.kDiamond, blocked_tiles=blocked_idxs, gen=rng)
+
+    # Place exit if not already done so
+    if exit_in_open:
+        add_item_inside_room(m, exit_type, blocked_tiles=blocked_idxs, gen=rng)
 
     # Place agent inside main
     add_item_inside_room(m, HiddenCellType.kAgent, blocked_tiles=blocked_idxs, gen=rng)

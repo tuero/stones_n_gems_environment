@@ -32,6 +32,20 @@ def fill_room(room: np.ndarray, fill_tiles: Tuple[HiddenCellType], gen: np.rando
             room[r, c] = _random_choice(fill_tiles, gen)
 
 
+def is_gate_touching(
+    room: np.ndarray,
+    row: int,
+    col: int
+):
+    """Return True if tile is touching gate
+    """
+    tiles_to_check = [(row, col-1), (row, col+1), (row-1, col), (row+1, col)]
+    for t in tiles_to_check:
+        if room[t[0], t[1]] in rnd_doors_hidden or room[t[0], t[1]] in rnd_doorsopen_hidden:
+            return True 
+    return False
+
+
 def add_item_inside_room(
     room: np.ndarray,
     tile_id: HiddenCellType,
@@ -50,9 +64,9 @@ def add_item_inside_room(
     rows, cols = room.shape[0], room.shape[1]
     room_indices = [
         (r, c)
-        for r in range(2, rows - 2)
-        for c in range(2, cols - 2)
-        if room[r, c] in background_tiles and (r, c) not in blocked_tiles
+        for r in range(1, rows - 1)
+        for c in range(1, cols - 1)
+        if room[r, c] in background_tiles and (r, c) not in blocked_tiles and not is_gate_touching(room, r, c)
     ]
     assert len(room_indices) > 0
     room_idx = _random_choice(room_indices, gen)

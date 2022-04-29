@@ -3,6 +3,7 @@ import os
 import hashlib
 from copy import deepcopy
 import numpy as np
+from wandb import agent
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from util.rnd_definitions import *
@@ -16,7 +17,12 @@ kDefaultGameParams = {
     "blob_chance": 20,  # Chance to spawn another blob (out of 256)
     "blob_max_percentage": 0.16,  # Max number of blobs before they collapse (percentage of map size)
     "rng_seed": 0,  # Seed for anything that uses the rng
+    "gravity": True, # Gravity which effects some objects
 }
+
+
+def l1_distance(coord1, coord2):
+    return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1])
 
 
 class RNDGameState:
@@ -212,7 +218,10 @@ class RNDGameState:
             self._set_item(coord, el_gate_open, self._grid_to_id(coord))
 
     def _update_stone(self, coord: Tuple[int, int]) -> None:
-        if self._is_type(coord, kElEmpty, Directions.kDown):  # Set to falling
+        if self._is_type(coord, kElEmpty, Directions.kDown):
+            # Set to falling if gravity is on
+            if not self._gravity:
+                return
             self._set_item(coord, kElStoneFalling, self._grid_to_id(coord))
             self._update_stone_falling(coord)
         elif self._can_roll_left(coord):  # Roll left
@@ -247,7 +256,10 @@ class RNDGameState:
             self._set_item(coord, kElStone, self._grid_to_id(coord))
 
     def _update_diamond(self, coord: Tuple[int, int]) -> None:
-        if self._is_type(coord, kElEmpty, Directions.kDown):  # Set to falling
+        if self._is_type(coord, kElEmpty, Directions.kDown):
+            # Set to falling if gravity is on
+            if not self._gravity:
+                return
             self._set_item(coord, kElDiamondFalling, self._grid_to_id(coord))
             self._update_diamond_falling(coord)
         elif self._can_roll_left(coord):  # Roll left
@@ -278,7 +290,10 @@ class RNDGameState:
             self._set_item(coord, kElDiamond, self._grid_to_id(coord))
 
     def _update_nut(self, coord: Tuple[int, int]) -> None:
-        if self._is_type(coord, kElEmpty, Directions.kDown):  # Set to falling
+        if self._is_type(coord, kElEmpty, Directions.kDown):
+            # Set to falling if gravity is on
+            if not self._gravity:
+                return
             self._set_item(coord, kElNutFalling, self._grid_to_id(coord))
             self._update_nut_falling(coord)
         elif self._can_roll_left(coord):  # Roll left
@@ -297,7 +312,10 @@ class RNDGameState:
             self._set_item(coord, kElNut, self._grid_to_id(coord))
 
     def _update_bomb(self, coord: Tuple[int, int]) -> None:
-        if self._is_type(coord, kElEmpty, Directions.kDown):  # Set to falling
+        if self._is_type(coord, kElEmpty, Directions.kDown):  
+            # Set to falling if gravity is on
+            if not self._gravity:
+                return
             self._set_item(coord, kElBombFalling, self._grid_to_id(coord))
             self._update_bomb_falling(coord)
         elif self._can_roll_left(coord):  # Roll left
@@ -484,6 +502,22 @@ class RNDGameState:
         self._parse_grid(params)
         self._steps_remaining = self._max_steps
         self._reward_signal = 0
+        self._gravity = params["gravity"]
+
+        # Any heuristic calculcations
+        self._unpack_grid()
+        diamon_pos = self.get_item_coords(kElDiamond) + self.get_item_coords(kElDiamondFalling)
+        agent_pos = self.get_item_coords(kElAgent)
+        exit_closed = self.get_item_coords(kElExitClosed) 
+        self._pack_grid()
+        self._min_diamond_dist = None
+        if len(diamon_pos) > 0 and len(agent_pos) > 0:
+            self._min_diamond_dist = min([l1_distance(agent_pos[0], d) for d in diamon_pos])
+
+        self._max_diamond_door_dist = None
+        if len(exit_closed) > 0 and len(agent_pos) > 0:
+            self._max_diamond_door_dist = max([l1_distance(exit_closed[0], d) for d in diamon_pos])
+
 
     def apply_action(self, action: int) -> None:
         """Perform the action and step the state forward one step
@@ -577,6 +611,36 @@ class RNDGameState:
     def get_reward_signal(self) -> int:
         """Get the current reward signal"""
         return self._reward_signal
+
+    def get_item_coords(self, element: Element) -> Tuple[Tuple[int, int]]:
+        return np.argwhere(self._grid[element.cell_type]).tolist()
+
+    def heuristic(self) -> int:
+        self._unpack_grid()
+        agent_pos = self.get_item_coords(kElAgent)
+        exit_open = self.get_item_coords(kElExitOpen)
+        exit_closed = self.get_item_coords(kElExitClosed) 
+        diamon_pos = self.get_item_coords(kElDiamond) + self.get_item_coords(kElDiamondFalling)
+        self._pack_grid()
+
+        if len(agent_pos) == 0:
+            return 0
+        
+        if len(exit_open) > 0:
+            return l1_distance(agent_pos[0], exit_open[0])
+
+        distance = 0
+        if len(exit_closed) > 0:
+            distance += min([l1_distance(exit_closed[0], d) for d in diamon_pos])
+            # distance += min(self._max_diamond_door_dist, l1_distance(agent_pos[0], exit_closed[0]))
+
+        # if len(diamon_pos) > 0 and self._min_diamond_dist is not None:
+        #     distance += len(diamon_pos) * self._min_diamond_dist
+
+        if len(diamon_pos) > 0:
+            distance += len(diamon_pos) * min([l1_distance(agent_pos[0], d) for d in diamon_pos])
+
+        return distance
 
     def __hash__(self) -> int:
         v = self.get_observation().view(np.uint8)

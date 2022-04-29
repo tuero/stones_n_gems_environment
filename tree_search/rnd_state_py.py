@@ -54,8 +54,8 @@ class RNDTreeStatePy:
     def get_image_representation(self):
         return self._state.get_observation()
     
-    def heuristic_value(self):
-        pass
+    def heuristic_value(self) -> int:
+        return self._state.heuristic()
     
     def reset(self):
         self._step = 0
